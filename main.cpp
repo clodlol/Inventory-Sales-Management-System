@@ -14,6 +14,7 @@ const int idDigitCount = 2;
 
 int addProduct(int id, string name, float price, int quantity);
 int updateProduct(int id, string name, float price, int quantity);
+int deleteProduct(int id);
 int updateProductsCache(int ids[], string names[], float prices[], int quantities[], int attributeCount); // Attribute count is kinda useless we'll rmeove it later
 
 // Helper Functions
@@ -216,13 +217,7 @@ int main()
                     }
 
                     int updateProductState = updateProduct(productId, newProductName, newProductPrice, newProductQuantity);
-
-                    if (updateProductState == -30)
-                    {
-                        handleError(-30);
-                        continue;
-                    }
-                    else if (updateProductState == 0)
+                    if (updateProductState == 0)
                     {
                         updateProductsCache(productIds, productNames, productPrices, productQuantities, 4);
                         cout << endl
@@ -237,9 +232,67 @@ int main()
                         getch();
                         continue;
                     }
+                    else
+                    {
+                        handleError(updateProductState);
+                        continue;
+                    }
                 }
                 else if (productMenuChoice == 3)
                 {
+                    int productId, oldQuantity;
+                    string oldName;
+                    float oldPrice;
+                    clearConsole();
+
+                    cout << "Enter Product Details" << endl
+                         << "ID: ";
+                    if (!getInt(productId, 1, INT_MAX))
+                    {
+                        handleError(-20);
+                        continue;
+                    }
+
+                    bool found = false;
+                    for (int i = 0; i < CACHE_SIZE; i++)
+                    {
+                        if (productIds[i] == productId)
+                        {
+                            oldName = productNames[i];
+                            oldQuantity = productQuantities[i];
+                            oldPrice = productPrices[i];
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (!found)
+                    {
+                        handleError(-10);
+                        continue;
+                    }
+
+                    int deleteProductState = deleteProduct(productId);
+                    if (deleteProductState == 0)
+                    {
+                        updateProductsCache(productIds, productNames, productPrices, productQuantities, 4);
+                        cout << endl
+                             << "The specified product has been deleted." << endl
+                             << "ID: " << productId << endl
+                             << "Name: " << oldName << endl
+                             << "Price: " << oldPrice << "$" << endl
+                             << "Quantity: " << oldQuantity << endl
+                             << endl;
+
+                        cout << "Press any key to go back...";
+                        getch();
+                        continue;
+                    }
+                    else
+                    {
+                        handleError(deleteProductState);
+                        continue;
+                    }
                 }
                 else if (productMenuChoice == 4)
                 {
@@ -268,6 +321,72 @@ int main()
     exit(0);
 }
 
+int deleteProduct(int id)
+{
+    ifstream originalFile(productFilePath);
+    if (!originalFile.is_open())
+    {
+        return -30;
+    }
+
+    ofstream tempFile("temp.txt");
+    if (!tempFile.is_open())
+    {
+        originalFile.close();
+        return -30;
+    }
+
+    bool lineIsHeader = true;
+    string line;
+    while (getline(originalFile, line))
+    {
+        if (lineIsHeader)
+        {
+            tempFile << line << endl;
+            lineIsHeader = false;
+            continue;
+        }
+        string attributeString;
+        for (int i = 0; i < line.size(); i++)
+        {
+            char ch = line[i];
+            if (ch != ';') // We break on the first semicolon, attributeString atp consists of our id
+            {
+                attributeString += ch;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        try
+        {
+            int currentId = stoi(attributeString);
+            if (currentId != id)
+            {
+                tempFile << line << endl;
+            }
+        }
+        catch (const invalid_argument &e)
+        {
+            return -21; // Error code for invalid data type in file
+        }
+        catch (const out_of_range &e)
+        {
+            return -50; // Error code for range overflow
+        }
+    }
+
+    originalFile.close();
+    tempFile.close();
+
+    remove(productFilePath.c_str());
+    rename("temp.txt", productFilePath.c_str());
+
+    return 0;
+}
+
 int updateProduct(int id, string name, float price, int quantity)
 {
     ifstream originalFile(productFilePath);
@@ -277,20 +396,20 @@ int updateProduct(int id, string name, float price, int quantity)
     }
 
     ofstream tempFile("temp.txt");
-    if (!originalFile.is_open())
+    if (!tempFile.is_open())
     {
         originalFile.close();
         return -30;
     }
 
-    int lineCounter = 0;
+    bool lineIsHeader = true;
     string line;
     while (getline(originalFile, line))
     {
-        if (lineCounter == 0)
+        if (lineIsHeader)
         {
             tempFile << line << endl;
-            lineCounter++;
+            lineIsHeader = false;
             continue;
         }
         string attributeString;
@@ -327,7 +446,6 @@ int updateProduct(int id, string name, float price, int quantity)
         {
             return -50; // Error code for range overflow
         }
-        lineCounter++;
     }
 
     originalFile.close();
