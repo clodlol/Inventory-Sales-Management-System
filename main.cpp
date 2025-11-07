@@ -3,26 +3,56 @@
 #include <cstdlib>
 #include <limits>
 #include <math.h>
+#include <conio.h>
 
 using namespace std;
 
+const int CACHE_SIZE = 1000;
+const string productFilePath = "products.txt";
+
 // Helper Functions
 int runMenu(string msg, int rangeStart, int rangeEnd);
-int loadProducts(long int ids[], string names[], float prices[], int quantities[], int n); // n is the number of attributes
+int updateProductsCache(int ids[], string names[], float prices[], int quantities[], int attributeCount);
 void clearConsole();
 
 int main()
 {
-    long int productIds[1000];
-    string productNames[1000];
-    float productPrices[1000];
-    int productQuantities[1000];
+    int productIds[CACHE_SIZE];
+    string productNames[CACHE_SIZE];
+    float productPrices[CACHE_SIZE];
+    int productQuantities[CACHE_SIZE];
+
+    const int productAttributeCount = 4;
 
     int menuChoice = runMenu("Welcome to Inventory Sales Management System!\n1. Product Management\n2. Inventory Tracking\n3. Sales Management\n4. Reports & Statistics\n5. Exit", 1, 5);
 
     if (menuChoice == 1)
     {
-        // load product management
+        int productCacheState = updateProductsCache(productIds, productNames, productPrices, productQuantities, productAttributeCount);
+
+        if(productCacheState == -21)
+        {
+            clearConsole();
+            cout << "The data in the file seems to be corrupted." << endl;
+            getch();
+            exit(-21);
+
+        } else if(productCacheState == -30)
+        {
+            clearConsole();
+            cout << "The data file throws an error upon operating." << endl;
+            getch();
+            exit(-30);
+        } else if(productCacheState == -50)
+        {
+            clearConsole();
+            cout << "Data written to unallocated memory. Did an integer overflow?" << endl;
+            getch();
+            exit(-50);
+        } else
+        {
+            exit(0);
+        }
     }
     else if (menuChoice == 2)
     {
@@ -42,9 +72,9 @@ int main()
     }
 }
 
-int loadProducts(long int ids[], string names[], float prices[], int quantities[], int n)
+int updateProductsCache(int ids[], string names[], float prices[], int quantities[], int attributeCount)
 {
-    ifstream file("products.txt");
+    ifstream file(productFilePath);
     if (!file.is_open())
     {
         return -30; // Error code for file not found
@@ -54,28 +84,53 @@ int loadProducts(long int ids[], string names[], float prices[], int quantities[
     int lineNumber = 0;
     while (getline(file, line))
     {
-        int columnCounter = 0;
-        string columnString;
+        int entityNumber = lineNumber - 1;
+        if (lineNumber == 0)
+        {
+            lineNumber++;
+            continue;
+        }
+
+        int attributeCounter = 0;
+        string entityString[attributeCount];
         for (int i = 0; i < line.size(); i++)
         {
-            int currentAttributeString;
             char ch = line[i];
             if (ch == ';')
-                columnCounter++;
-
-            if (columnCounter == 0)
             {
-                //string currentAttributeString += ch;
-                if (!isdigit(ch))
-                    return -21; // Error code for invalid data format in file
-                //ids[lineNumber] += ('0' - ch) * ((int)pow(10, productIdLength - i));
-            } else if(columnCounter == 1)
-            {
-
+                attributeCounter++;
+                if (attributeCounter == attributeCount)
+                    break;
             }
+
+            if (ch != ';')
+                entityString[attributeCounter] += ch;
+        }
+
+        try
+        {
+            int productId = stoi(entityString[0]);
+            string productName = entityString[1];
+            float productPrice = stof(entityString[2]);
+            int productQuantity = stoi(entityString[3]); // This is repetitive for more attributes, consider using loop here
+
+            ids[entityNumber] = productId;
+            names[entityNumber] = productName;
+            prices[entityNumber] = productPrice;
+            quantities[entityNumber] = productQuantity;
+        }
+        catch (const invalid_argument &e)
+        {
+            return -21; // Error code for invalid data type in file
+        }
+        catch (const out_of_range &e)
+        {
+            return -50; // Error code for range overflow
         }
         lineNumber++;
     }
+
+    return 0;
 }
 
 int runMenu(string msg, int rangeStart, int rangeEnd)
