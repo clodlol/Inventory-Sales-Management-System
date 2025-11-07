@@ -125,13 +125,7 @@ int main()
                     productId = getRandomInt(1, (int)pow(10.0, idDigitCount));
 
                     int newProductState = addProduct(productId, productName, productPrice, productQuantity);
-
-                    if (newProductState == -30)
-                    {
-                        handleError(-30);
-                        continue;
-                    }
-                    else if (newProductState == 0)
+                    if (newProductState == 0)
                     {
                         updateProductsCache(productIds, productNames, productPrices, productQuantities, 4);
                         cout << endl
@@ -144,6 +138,11 @@ int main()
 
                         cout << "Press any key to go back...";
                         getch();
+                        continue;
+                    }
+                    else 
+                    {
+                        handleError(newProductState);
                         continue;
                     }
                 }
