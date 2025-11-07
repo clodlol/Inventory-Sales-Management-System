@@ -4,13 +4,15 @@
 #include <limits>
 #include <cmath>
 #include <conio.h>
+#include <ctime>
 
 using namespace std;
 
-const int CACHE_SIZE = 1000;
+const int CACHE_SIZE = 20;
 const string productFilePath = "products.txt";
+const int idDigitCount = 2;
 
-int addProduct(int id, int name, float price, int quantity);
+int addProduct(int id, string name, float price, int quantity);
 int updateProductsCache(int ids[], string names[], float prices[], int quantities[], int attributeCount);
 
 // Helper Functions
@@ -18,11 +20,14 @@ void handleError(int code);
 void clearConsole();
 void getString(string &s);
 bool getFloat(float &input, int rangeStart, int rangeEnd, int precisionPoints);
-bool getInt(int &input, int rangeStart, int rangeEnd );
+bool getInt(int &input, int rangeStart, int rangeEnd);
+int getRandomInt(int min, int max);
 
 int main()
 {
-    int productIds[CACHE_SIZE];
+    srand(time(0));
+
+    int productIds[CACHE_SIZE] = {0};
     string productNames[CACHE_SIZE];
     float productPrices[CACHE_SIZE];
     int productQuantities[CACHE_SIZE];
@@ -95,21 +100,49 @@ int main()
                          << "Name: ";
                     getString(productName);
 
-                    cout << "Price: ";
-                    if(!getFloat(productPrice, 0, INT_MAX, 2))
-                    {
-                        handleError(-20);
-                        continue;
-                    }
-                    
-                    cout << "Quantity: ";
-                    if(!getInt(productQuantity, 0, INT_MAX))
+                    if (productName.size() <= 3)
                     {
                         handleError(-20);
                         continue;
                     }
 
-                    
+                    cout << "Price: ";
+                    if (!getFloat(productPrice, 0, INT_MAX, 2))
+                    {
+                        handleError(-20);
+                        continue;
+                    }
+
+                    cout << "Quantity: ";
+                    if (!getInt(productQuantity, 0, INT_MAX))
+                    {
+                        handleError(-20);
+                        continue;
+                    }
+
+                    productId = getRandomInt(1, (int)pow(10.0, idDigitCount));
+
+                    int newProductState = addProduct(productId, productName, productPrice, productQuantity);
+
+                    if (newProductState == -30)
+                    {
+                        handleError(-30);
+                    }
+                    else if (newProductState == 0)
+                    {
+                        updateProductsCache(productIds, productNames, productPrices, productQuantities, 4);
+                        cout << endl
+                             << "A new product has been entered into the system." << endl
+                             << "ID: " << productId << endl
+                             << "Name: " << productName << endl
+                             << "Price: " << productPrice << "$" << endl
+                             << "Quantity: " << productQuantity << endl
+                             << endl;
+
+                        cout << "Press any key to go back...";
+                        getch();
+                        continue;
+                    }
                 }
                 else if (productMenuChoice == 2)
                 {
@@ -144,9 +177,18 @@ int main()
     exit(0);
 }
 
-int addProduct(int id, int name, float price, int quantity)
+int addProduct(int id, string name, float price, int quantity)
 {
-    
+    ofstream file(productFilePath, ios::app);
+    if (!file.is_open())
+    {
+        return 30;
+    }
+
+    file << id << ";" << name << ";" << price << ";" << quantity << ";" << endl;
+    file.close();
+
+    return 0;
 }
 
 int updateProductsCache(int ids[], string names[], float prices[], int quantities[], int attributeCount)
@@ -211,8 +253,8 @@ int updateProductsCache(int ids[], string names[], float prices[], int quantitie
 }
 
 void handleError(int code)
-{   
-    if(code == -20)
+{
+    if (code == -20)
     {
         clearConsole();
         cout << "Invalid data given. Did you make sure prices and quantities are positive?" << endl;
@@ -276,7 +318,7 @@ bool getFloat(float &input, int rangeStart, int rangeEnd, int precisionPoints)
         if (input >= rangeStart && input <= rangeEnd)
         {
             float scale = pow(10.0, precisionPoints);
-            input =  round(input * scale) / scale;
+            input = round(input * scale) / scale;
             return true;
         }
         else
@@ -290,6 +332,14 @@ bool getFloat(float &input, int rangeStart, int rangeEnd, int precisionPoints)
         cin.ignore(numeric_limits<streamsize>::max(), '\n'); // ignores invalid input
         return false;
     }
+}
+
+int getRandomInt(int min, int max)
+{
+    if (min > max)
+        return -1;
+
+    return min + rand() % (max - min + 1);
 }
 
 void clearConsole()
