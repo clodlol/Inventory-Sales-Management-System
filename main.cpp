@@ -10,8 +10,10 @@ using namespace std;
 const int CACHE_SIZE = 1000;
 const string productFilePath = "products.txt";
 
-// Helper Functions
+int addProduct(int id, int name, float price, int quantity);
 int updateProductsCache(int ids[], string names[], float prices[], int quantities[], int attributeCount);
+
+// Helper Functions
 void handleError(int code);
 void clearConsole();
 void getString(string &s);
@@ -42,7 +44,7 @@ int main()
              << endl;
 
         cout << "Enter your choice: ";
-        if (!getInt(menuChoice, 1, 4))
+        if (!getInt(menuChoice, 1, 5))
             continue;
 
         if (menuChoice == 1)
@@ -106,6 +108,8 @@ int main()
                         handleError(-20);
                         continue;
                     }
+
+                    
                 }
                 else if (productMenuChoice == 2)
                 {
@@ -138,6 +142,11 @@ int main()
     }
 
     exit(0);
+}
+
+int addProduct(int id, int name, float price, int quantity)
+{
+    
 }
 
 int updateProductsCache(int ids[], string names[], float prices[], int quantities[], int attributeCount)
@@ -267,7 +276,8 @@ bool getFloat(float &input, int rangeStart, int rangeEnd, int precisionPoints)
         if (input >= rangeStart && input <= rangeEnd)
         {
             float scale = pow(10.0, precisionPoints);
-            return round(input * scale) / scale;
+            input =  round(input * scale) / scale;
+            return true;
         }
         else
         {
