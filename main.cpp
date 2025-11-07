@@ -13,7 +13,8 @@ const string productFilePath = "products.txt";
 const int idDigitCount = 2;
 
 int addProduct(int id, string name, float price, int quantity);
-int updateProductsCache(int ids[], string names[], float prices[], int quantities[], int attributeCount);
+int updateProduct(int id, string name, float price, int quantity);
+int updateProductsCache(int ids[], string names[], float prices[], int quantities[], int attributeCount); // Attribute count is kinda useless we'll rmeove it later
 
 // Helper Functions
 void handleError(int code);
@@ -25,7 +26,7 @@ int getRandomInt(int min, int max);
 
 int main()
 {
-    srand(time(0));
+    srand(time(0)); // Helpful for random number gen
 
     int productIds[CACHE_SIZE] = {0};
     string productNames[CACHE_SIZE];
@@ -127,6 +128,7 @@ int main()
                     if (newProductState == -30)
                     {
                         handleError(-30);
+                        continue;
                     }
                     else if (newProductState == 0)
                     {
@@ -146,6 +148,95 @@ int main()
                 }
                 else if (productMenuChoice == 2)
                 {
+                    int productId, oldQuantity;
+                    string oldName;
+                    float oldPrice;
+                    clearConsole();
+
+                    cout << "Enter Product Details" << endl
+                         << "ID: ";
+                    if (!getInt(productId, 1, INT_MAX))
+                    {
+                        handleError(-20);
+                        continue;
+                    }
+
+                    bool found = false;
+                    for (int i = 0; i < CACHE_SIZE; i++)
+                    {
+                        if (productIds[i] == productId)
+                        {
+                            oldName = productNames[i];
+                            oldQuantity = productQuantities[i];
+                            oldPrice = productPrices[i];
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (!found)
+                    {
+                        handleError(-10);
+                        continue;
+                    }
+
+                    string newProductName;
+                    int newProductQuantity;
+                    float newProductPrice;
+
+                    cout << endl
+                         << endl
+                         << "Enter updated details for product " << productId << " (leave empty to retain)" << endl
+                         << "Name: ";
+                    getString(newProductName);
+
+                    if (newProductName.size() == 0)
+                    {
+                        newProductName = oldName;
+                    }
+
+                    if (newProductName.size() >= 1 && newProductName.size() <= 3)
+                    {
+                        handleError(-20);
+                        continue;
+                    }
+
+                    cout << "Price: ";
+                    if (!getFloat(newProductPrice, 0, INT_MAX, 2))
+                    {
+                        handleError(-20);
+                        continue;
+                    }
+
+                    cout << "Quantity: ";
+                    if (!getInt(newProductQuantity, 0, INT_MAX))
+                    {
+                        handleError(-20);
+                        continue;
+                    }
+
+                    int updateProductState = updateProduct(productId, newProductName, newProductPrice, newProductQuantity);
+
+                    if (updateProductState == -30)
+                    {
+                        handleError(-30);
+                        continue;
+                    }
+                    else if (updateProductState == 0)
+                    {
+                        updateProductsCache(productIds, productNames, productPrices, productQuantities, 4);
+                        cout << endl
+                             << "The specified product has been edited." << endl
+                             << "ID: " << productId << endl
+                             << "Name: " << oldName << " -> " << newProductName << endl
+                             << "Price: " << oldPrice << "$" << " -> " << newProductPrice << "$" << endl
+                             << "Quantity: " << oldQuantity << " -> " << newProductQuantity << endl
+                             << endl;
+
+                        cout << "Press any key to go back...";
+                        getch();
+                        continue;
+                    }
                 }
                 else if (productMenuChoice == 3)
                 {
@@ -177,12 +268,83 @@ int main()
     exit(0);
 }
 
+int updateProduct(int id, string name, float price, int quantity)
+{
+    ifstream originalFile(productFilePath);
+    if (!originalFile.is_open())
+    {
+        return -30;
+    }
+
+    ofstream tempFile("temp.txt");
+    if (!originalFile.is_open())
+    {
+        originalFile.close();
+        return -30;
+    }
+
+    int lineCounter = 0;
+    string line;
+    while (getline(originalFile, line))
+    {
+        if (lineCounter == 0)
+        {
+            tempFile << line << endl;
+            lineCounter++;
+            continue;
+        }
+        string attributeString;
+        for (int i = 0; i < line.size(); i++)
+        {
+            char ch = line[i];
+            if (ch != ';') // We break on the first semicolon, attributeString atp consists of our id
+            {
+                attributeString += ch;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        try
+        {
+            int currentId = stoi(attributeString);
+            if (currentId == id)
+            {
+                tempFile << id << ";" << name << ";" << price << ";" << quantity << ";" << endl;
+            }
+            else
+            {
+                tempFile << line << endl;
+            }
+        }
+        catch (const invalid_argument &e)
+        {
+            return -21; // Error code for invalid data type in file
+        }
+        catch (const out_of_range &e)
+        {
+            return -50; // Error code for range overflow
+        }
+        lineCounter++;
+    }
+
+    originalFile.close();
+    tempFile.close();
+
+    remove(productFilePath.c_str());
+    rename("temp.txt", productFilePath.c_str());
+
+    return 0;
+}
+
 int addProduct(int id, string name, float price, int quantity)
 {
     ofstream file(productFilePath, ios::app);
     if (!file.is_open())
     {
-        return 30;
+        return -30;
     }
 
     file << id << ";" << name << ";" << price << ";" << quantity << ";" << endl;
@@ -254,7 +416,13 @@ int updateProductsCache(int ids[], string names[], float prices[], int quantitie
 
 void handleError(int code)
 {
-    if (code == -20)
+    if (code == -10)
+    {
+        clearConsole();
+        cout << "The product with the specified ID does not exist." << endl;
+        getch();
+    }
+    else if (code == -20)
     {
         clearConsole();
         cout << "Invalid data given. Did you make sure prices and quantities are positive?" << endl;
