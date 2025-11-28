@@ -8,16 +8,22 @@
 
 using namespace std;
 
-const int CACHE_SIZE = 20;
+const int CACHE_SIZE = 100; // number of products/sales stored in arrays
+const int NAME_LIMIT = 32;
 const string productFilePath = "products.txt";
-const int idDigitCount = 2;
 
-int addProduct(int id, string name, float price, int quantity);
-int updateProduct(int id, string name, float price, int quantity);
-int deleteProduct(int id);
-int updateProductsCache(int ids[], string names[], float prices[], int quantities[], int attributeCount); // Attribute count is kinda useless we'll rmeove it later
+int addProduct(Product allProducts[], Product newProduct);
 
-// Helper Functions
+int updateProduct(Product products[], int searchId, string name, double price, int quantity);
+int updateProduct(Product products[], int searchId, double price, int quantity);
+int updateProduct(Product products[], string searchName, double price, int quantity);
+
+int deleteProduct(Product products[], int searchId);
+int deleteProduct(Product products[], string searchName);
+
+int saveProductsData(Product products[]);
+int loadProductsData(Product products[]);
+
 void handleError(int code);
 void clearConsole();
 void getString(string &s);
@@ -25,22 +31,26 @@ bool getFloat(float &input, int rangeStart, int rangeEnd, int precisionPoints);
 bool getInt(int &input, int rangeStart, int rangeEnd);
 int getRandomInt(int min, int max);
 
+struct Product
+{
+    string name;
+    int id;
+    double price;
+    int quantity;
+};
+
+int productsCount = 0;
+
 int main()
 {
     srand(time(0)); // Helpful for random number gen
 
-    int productIds[CACHE_SIZE] = {0};
-    string productNames[CACHE_SIZE];
-    float productPrices[CACHE_SIZE];
-    int productQuantities[CACHE_SIZE];
-
-    const int productAttributeCount = 4;
+    Product products[CACHE_SIZE];
 
     while (true)
     {
         clearConsole();
-
-        int menuChoice;
+        int menuChoice = 0;
 
         cout << "Welcome to Inventory Sales Management System!" << endl
              << "1. Product Management" << endl
@@ -56,29 +66,12 @@ int main()
 
         if (menuChoice == 1)
         {
-            int productCacheState = updateProductsCache(productIds, productNames, productPrices, productQuantities, productAttributeCount);
-
-            if (productCacheState == -21)
-            {
-                handleError(-21);
-                exit(-21);
-            }
-            else if (productCacheState == -30)
-            {
-                handleError(-30);
-                exit(-30);
-            }
-            else if (productCacheState == -50)
-            {
-                handleError(-50);
-                exit(-50);
-            }
+            loadProductsData(products);
 
             while (true)
             {
                 clearConsole();
-
-                int productMenuChoice;
+                int productMenuChoice = 0;
 
                 cout << "1. Add Product" << endl
                      << "2. Edit Product" << endl
@@ -92,55 +85,52 @@ int main()
 
                 if (productMenuChoice == 1)
                 {
-                    int productId, productQuantity;
-                    string productName;
-                    float productPrice;
-
+                    Product newProduct;
                     clearConsole();
 
                     cout << "Enter Product Details" << endl
                          << "Name: ";
-                    getString(productName);
+                    getString(newProduct.name);
 
-                    if (productName.size() <= 3)
+                    if (newProduct.name.size() <= 3 || newProduct.name.size() > 32)
                     {
                         handleError(-20);
                         continue;
                     }
 
                     cout << "Price: ";
-                    if (!getFloat(productPrice, 0, INT_MAX, 2))
+                    if (!getFloat(newProduct.price, 0, INT_MAX, 2))
                     {
                         handleError(-20);
                         continue;
                     }
 
                     cout << "Quantity: ";
-                    if (!getInt(productQuantity, 0, INT_MAX))
+                    if (!getInt(newProduct.quantity, 0, INT_MAX))
                     {
                         handleError(-20);
                         continue;
                     }
 
-                    productId = getRandomInt(1, (int)pow(10.0, idDigitCount));
+                    newProduct.id = getRandomInt(99999, 999999);
 
-                    int newProductState = addProduct(productId, productName, productPrice, productQuantity);
+                    int newProductState = addProduct(products, newProduct);
                     if (newProductState == 0)
                     {
-                        updateProductsCache(productIds, productNames, productPrices, productQuantities, 4);
+                        saveProductsData(products);
                         cout << endl
                              << "A new product has been entered into the system." << endl
-                             << "ID: " << productId << endl
-                             << "Name: " << productName << endl
-                             << "Price: " << productPrice << "$" << endl
-                             << "Quantity: " << productQuantity << endl
+                             << "ID: " << newProduct.id << endl
+                             << "Name: " << newProduct.name << endl
+                             << "Price: " << newProduct.price << "$" << endl
+                             << "Quantity: " << newProduct.quantity << endl
                              << endl;
 
                         cout << "Press any key to go back...";
                         getch();
                         continue;
                     }
-                    else 
+                    else
                     {
                         handleError(newProductState);
                         continue;
@@ -148,27 +138,27 @@ int main()
                 }
                 else if (productMenuChoice == 2)
                 {
-                    int productId, oldQuantity;
-                    string oldName;
-                    float oldPrice;
+                    Product oldProduct;
+                    int searchId;
+                    string searchName;
                     clearConsole();
 
                     cout << "Enter Product Details" << endl
                          << "ID: ";
-                    if (!getInt(productId, 1, INT_MAX))
+                    if (!getInt(searchId, 99999, 999999))
                     {
                         handleError(-20);
                         continue;
                     }
 
                     bool found = false;
-                    for (int i = 0; i < CACHE_SIZE; i++)
+                    for (int i = 0; i < productsCount; i++)
                     {
-                        if (productIds[i] == productId)
+                        if (products[i].id == searchId)
                         {
-                            oldName = productNames[i];
-                            oldQuantity = productQuantities[i];
-                            oldPrice = productPrices[i];
+                            oldProduct.name = products[i].name;
+                            oldProduct.quantity = products[i].quantity;
+                            oldProduct.price = products[i].price;
                             found = true;
                             break;
                         }
@@ -182,20 +172,15 @@ int main()
 
                     string newProductName;
                     int newProductQuantity;
-                    float newProductPrice;
+                    double newProductPrice;
 
                     cout << endl
                          << endl
-                         << "Enter updated details for product " << productId << " (leave empty to retain)" << endl
-                         << "Name: ";
+                         << "Enter updated details for product " << searchId << endl;
+                    cout << "Name: ";
                     getString(newProductName);
 
-                    if (newProductName.size() == 0)
-                    {
-                        newProductName = oldName;
-                    }
-
-                    if (newProductName.size() >= 1 && newProductName.size() <= 3)
+                    if (newProductName.size() < 3 || newProductName.size() > NAME_LIMIT)
                     {
                         handleError(-20);
                         continue;
@@ -215,16 +200,16 @@ int main()
                         continue;
                     }
 
-                    int updateProductState = updateProduct(productId, newProductName, newProductPrice, newProductQuantity);
+                    int updateProductState = updateProduct(products, searchId, newProductName, newProductPrice, newProductQuantity);
                     if (updateProductState == 0)
                     {
-                        updateProductsCache(productIds, productNames, productPrices, productQuantities, 4);
+                        saveProductsData(products);
                         cout << endl
                              << "The specified product has been edited." << endl
-                             << "ID: " << productId << endl
-                             << "Name: " << oldName << " -> " << newProductName << endl
-                             << "Price: " << oldPrice << "$" << " -> " << newProductPrice << "$" << endl
-                             << "Quantity: " << oldQuantity << " -> " << newProductQuantity << endl
+                             << "ID: " << searchId << endl
+                             << "Name: " << oldProduct.name << " -> " << newProductName << endl
+                             << "Price: " << oldProduct.price << "$" << " -> " << newProductPrice << "$" << endl
+                             << "Quantity: " << oldProduct.quantity<< " -> " << newProductQuantity << endl
                              << endl;
 
                         cout << "Press any key to go back...";
@@ -241,25 +226,25 @@ int main()
                 {
                     int productId, oldQuantity;
                     string oldName;
-                    float oldPrice;
+                    double oldPrice;
                     clearConsole();
 
                     cout << "Enter Product Details" << endl
                          << "ID: ";
-                    if (!getInt(productId, 1, INT_MAX))
+                    if (!getInt(productId, 99999, 999999))
                     {
                         handleError(-20);
                         continue;
                     }
 
                     bool found = false;
-                    for (int i = 0; i < CACHE_SIZE; i++)
+                    for (int i = 0; i < productsCount; i++)
                     {
-                        if (productIds[i] == productId)
+                        if (products[i].id == productId)
                         {
-                            oldName = productNames[i];
-                            oldQuantity = productQuantities[i];
-                            oldPrice = productPrices[i];
+                            oldName = products[i].name;
+                            oldQuantity = products[i].quantity;
+                            oldPrice = products[i].price;
                             found = true;
                             break;
                         }
@@ -274,7 +259,7 @@ int main()
                     int deleteProductState = deleteProduct(productId);
                     if (deleteProductState == 0)
                     {
-                        updateProductsCache(productIds, productNames, productPrices, productQuantities, 4);
+                        saveProductsData(products);
                         cout << endl
                              << "The specified product has been deleted." << endl
                              << "ID: " << productId << endl
@@ -320,214 +305,203 @@ int main()
     exit(0);
 }
 
-int deleteProduct(int id)
+int deleteProduct(Product products[], int searchId)
 {
-    ifstream originalFile(productFilePath);
-    if (!originalFile.is_open())
+    Product temp[CACHE_SIZE];
+    int tempCounter = 0;
+    for (int i = 0; i < productsCount; i++)
     {
-        return -30;
-    }
-
-    ofstream tempFile("temp.txt");
-    if (!tempFile.is_open())
-    {
-        originalFile.close();
-        return -30;
-    }
-
-    bool lineIsHeader = true;
-    string line;
-    while (getline(originalFile, line))
-    {
-        if (lineIsHeader)
+        if (products[i].id != searchId)
         {
-            tempFile << line << endl;
-            lineIsHeader = false;
-            continue;
-        }
-        string attributeString;
-        for (int i = 0; i < line.size(); i++)
-        {
-            char ch = line[i];
-            if (ch != ';') // We break on the first semicolon, attributeString atp consists of our id
-            {
-                attributeString += ch;
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        try
-        {
-            int currentId = stoi(attributeString);
-            if (currentId != id)
-            {
-                tempFile << line << endl;
-            }
-        }
-        catch (const invalid_argument &e)
-        {
-            return -21; // Error code for invalid data type in file
-        }
-        catch (const out_of_range &e)
-        {
-            return -50; // Error code for range overflow
+            temp[tempCounter] = products[i];
+            tempCounter++;
         }
     }
 
-    originalFile.close();
-    tempFile.close();
-
-    remove(productFilePath.c_str());
-    rename("temp.txt", productFilePath.c_str());
+    productsCount = tempCounter;
 
     return 0;
 }
 
-int updateProduct(int id, string name, float price, int quantity)
+int deleteProduct(Product products[], string searchName)
 {
-    ifstream originalFile(productFilePath);
-    if (!originalFile.is_open())
+    Product temp[CACHE_SIZE];
+    int tempCounter = 0;
+    for (int i = 0; i < productsCount; i++)
     {
-        return -30;
-    }
-
-    ofstream tempFile("temp.txt");
-    if (!tempFile.is_open())
-    {
-        originalFile.close();
-        return -30;
-    }
-
-    bool lineIsHeader = true;
-    string line;
-    while (getline(originalFile, line))
-    {
-        if (lineIsHeader)
+        if (products[i].name != searchName)
         {
-            tempFile << line << endl;
-            lineIsHeader = false;
-            continue;
-        }
-        string attributeString;
-        for (int i = 0; i < line.size(); i++)
-        {
-            char ch = line[i];
-            if (ch != ';') // We break on the first semicolon, attributeString atp consists of our id
-            {
-                attributeString += ch;
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        try
-        {
-            int currentId = stoi(attributeString);
-            if (currentId == id)
-            {
-                tempFile << id << ";" << name << ";" << price << ";" << quantity << ";" << endl;
-            }
-            else
-            {
-                tempFile << line << endl;
-            }
-        }
-        catch (const invalid_argument &e)
-        {
-            return -21; // Error code for invalid data type in file
-        }
-        catch (const out_of_range &e)
-        {
-            return -50; // Error code for range overflow
+            temp[tempCounter] = products[i];
+            tempCounter++;
         }
     }
 
-    originalFile.close();
-    tempFile.close();
-
-    remove(productFilePath.c_str());
-    rename("temp.txt", productFilePath.c_str());
+    productsCount = tempCounter;
 
     return 0;
 }
 
-int addProduct(int id, string name, float price, int quantity)
+int updateProduct(Product products[], int searchId, string name, double price, int quantity)
 {
-    ofstream file(productFilePath, ios::app);
-    if (!file.is_open())
+    int index = -1, oldQty = 0;
+    double oldPrice = 0;
+    for (int i = 0; i < productsCount; i++)
     {
-        return -30;
+        if (products[i].id == searchId)
+        {
+            index = i;
+            oldPrice = products[i].price;
+            oldQty = products[i].quantity;
+            break;
+        }
     }
 
-    file << id << ";" << name << ";" << price << ";" << quantity << ";" << endl;
-    file.close();
+    if (index == -1)
+    {
+        // error
+    }
+
+    products[index].name = name;
+    products[index].price = (price < 0) ? oldPrice : price;
+    products[index].quantity = (quantity < 0) ? oldQty : quantity;
 
     return 0;
 }
 
-int updateProductsCache(int ids[], string names[], float prices[], int quantities[], int attributeCount)
+int updateProduct(Product products[], int searchId, double price, int quantity)
 {
-    ifstream file(productFilePath);
-    if (!file.is_open())
+    int index = -1, oldQty = 0;
+    double oldPrice = 0;
+    for (int i = 0; i < productsCount; i++)
     {
-        return -30; // Error code for file not found
+        if (products[i].id == searchId)
+        {
+            index = i;
+            oldPrice = products[i].price;
+            oldQty = products[i].quantity;
+            break;
+        }
     }
 
-    string line;
-    int lineNumber = 0;
-    while (getline(file, line))
+    if (index == -1)
     {
-        int entityNumber = lineNumber - 1;
-        if (lineNumber == 0)
+        // error
+    }
+
+    products[index].price = (price < 0) ? oldPrice : price;
+    products[index].quantity = (quantity < 0) ? oldQty : quantity;
+
+    return 0;
+}
+
+int updateProduct(Product products[], string searchName, double price, int quantity)
+{
+    int index = -1, oldQty = 0;
+    double oldPrice = 0;
+    for (int i = 0; i < productsCount; i++)
+    {
+        if (products[i].name == searchName)
         {
-            lineNumber++;
+            index = i;
+            oldPrice = products[i].price;
+            oldQty = products[i].quantity;
+            break;
+        }
+    }
+
+    if (index == -1)
+    {
+        // error
+    }
+
+    products[index].price = (price < 0) ? oldPrice : price;
+    products[index].quantity = (quantity < 0) ? oldQty : quantity;
+
+    return 0;
+}
+
+int addProduct(Product products[], Product newProduct)
+{
+    // TODO prevent duplicates, since ids are random this is unlikely
+    products[productsCount] = newProduct;
+    productsCount++;
+}
+
+int saveProductsData(Product products[])
+{
+    ofstream productFile(productFilePath, ios::out);
+    if (!productFile.is_open())
+    {
+        // error
+    }
+
+    productFile << "ID;Name;Price;Quantity;" << endl;
+    for (int i = 0; i < productsCount; i++)
+    {
+        productFile << products[i].id << ";" << products[i].name << ";" << products[i].price << ";" << products[i].quantity << ";" << endl;
+    }
+
+    return 0;
+}
+
+int loadProductsData(Product products[])
+{
+    ifstream productFile(productFilePath, ios::in);
+    if (!productFile.is_open())
+    {
+        // error
+    }
+
+    bool isHeader = true;
+    string line;
+    int productCounter = 0;
+    while (getline(productFile, line))
+    {
+        if (isHeader)
+        {
+            isHeader = false;
             continue;
         }
 
-        int attributeCounter = 0;
-        string entityString[attributeCount];
+        char attrStr[line.size()];
+        int attrStrCounter = 0, attrCount = 0;
         for (int i = 0; i < line.size(); i++)
         {
-            char ch = line[i];
-            if (ch == ';')
+            attrStr[attrStrCounter] = '\0';
+
+            if (line[i] == ';')
             {
-                attributeCounter++;
-                if (attributeCounter == attributeCount)
-                    break;
+                if (attrCount == 0)
+                {
+                    products[productCounter].id = atoi(attrStr);
+                }
+                else if (attrCount == 1)
+                {
+                    products[productCounter].name = attrStr;
+                }
+                else if (attrCount == 2)
+                {
+                    products[productCounter].price = atof(attrStr);
+                }
+                else if (attrCount == 3)
+                {
+                    products[productCounter].quantity = atoi(attrStr);
+                }
+
+                attrStrCounter = 0;
+                attrCount++;
             }
-
-            if (ch != ';')
-                entityString[attributeCounter] += ch;
+            else
+            {
+                attrStr[attrStrCounter] = line[i];
+                attrStrCounter++;
+            }
         }
 
-        try
-        {
-            int productId = stoi(entityString[0]);
-            string productName = entityString[1];
-            float productPrice = stof(entityString[2]);
-            int productQuantity = stoi(entityString[3]); // This is repetitive for more attributes, consider using loop here
-
-            ids[entityNumber] = productId;
-            names[entityNumber] = productName;
-            prices[entityNumber] = productPrice;
-            quantities[entityNumber] = productQuantity;
-        }
-        catch (const invalid_argument &e)
-        {
-            return -21; // Error code for invalid data type in file
-        }
-        catch (const out_of_range &e)
-        {
-            return -50; // Error code for range overflow
-        }
-        lineNumber++;
+        productCounter++;
     }
 
+    productsCount = productCounter;
     return 0;
 }
 
@@ -595,14 +569,14 @@ bool getInt(int &input, int rangeStart, int rangeEnd)
     }
 }
 
-bool getFloat(float &input, int rangeStart, int rangeEnd, int precisionPoints)
+bool getFloat(double &input, int rangeStart, int rangeEnd, int precisionPoints)
 {
     if (cin >> input)
     {
 
         if (input >= rangeStart && input <= rangeEnd)
         {
-            float scale = pow(10.0, precisionPoints);
+            double scale = pow(10.0, precisionPoints);
             input = round(input * scale) / scale;
             return true;
         }
@@ -613,8 +587,8 @@ bool getFloat(float &input, int rangeStart, int rangeEnd, int precisionPoints)
     }
     else
     {
-        cin.clear();                                         // ignores error flags
-        cin.ignore(numeric_limits<streamsize>::max(), '\n'); // ignores invalid input
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
         return false;
     }
 }
