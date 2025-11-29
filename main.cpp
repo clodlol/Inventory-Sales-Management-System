@@ -24,7 +24,10 @@ struct Product
 int handleAddProduct(Product products[], int productsCount);
 int handleUpdateProduct(Product products[], int productsCount);
 int handleDeleteProduct(Product products[], int productsCount);
+
 int handleViewProducts(Product products[], int productsCount);
+int handleSearchById(Product products[], int productsCount);
+int handleSearchByName(Product products[], int productsCount);
 
 int addProduct(Product products[], int &productsCount, Product newProduct);
 
@@ -45,6 +48,7 @@ bool getDouble(double &input, int rangeStart, int rangeEnd);
 bool getInt(int &input, int rangeStart, int rangeEnd);
 
 int getRandomInt(int min, int max);
+string toLowerString(string s);
 
 int main()
 {
@@ -81,8 +85,7 @@ int main()
                 cout << "1. Add Product" << endl
                      << "2. Edit Product" << endl
                      << "3. Delete Product" << endl
-                     << "4. View Products" << endl
-                     << "5. Go Back" << endl
+                     << "4. Go Back" << endl
                      << endl;
 
                 cout << "Enter your choice: ";
@@ -130,6 +133,30 @@ int main()
                 }
                 else if (productMenuChoice == 4)
                 {
+                    break;
+                }
+            }
+        }
+        else if (menuChoice == 2)
+        {
+            while (true)
+            {
+                loadProductsData(products, productsCount);
+                clearConsole();
+                int inventoryMenuChoice = 0;
+
+                cout << "1. View Available Stock" << endl
+                     << "2. Search by ID" << endl
+                     << "3. Search by Name" << endl
+                     << "4. Go Back" << endl
+                     << endl;
+
+                cout << "Enter your choice: ";
+                if (!getInt(inventoryMenuChoice, 1, 4))
+                    continue;
+
+                if (inventoryMenuChoice == 1)
+                {
                     int viewProductsState = handleViewProducts(products, productsCount);
                     if (viewProductsState != 0)
                     {
@@ -141,15 +168,37 @@ int main()
                         getch();
                     }
                 }
-                else if (productMenuChoice == 5)
+                else if (inventoryMenuChoice == 2)
+                {
+                    int searchIdState = handleSearchById(products, productsCount);
+                    if (searchIdState != 0)
+                    {
+                        handleError(searchIdState);
+                    }
+                    else
+                    {
+                        cout << "Press any key to go back...";
+                        getch();
+                    }
+                }
+                else if (inventoryMenuChoice == 3)
+                {
+                    int searchNameState = handleSearchByName(products, productsCount);
+                    if (searchNameState != 0)
+                    {
+                        handleError(searchNameState);
+                    }
+                    else
+                    {
+                        cout << "Press any key to go back...";
+                        getch();
+                    }
+                }
+                else if (inventoryMenuChoice == 4)
                 {
                     break;
                 }
             }
-        }
-        else if (menuChoice == 2)
-        {
-            // load inventory tracking
         }
         else if (menuChoice == 3)
         {
@@ -371,23 +420,119 @@ int handleViewProducts(Product products[], int productsCount)
     cout << "Here are all the stored products: " << endl
          << endl;
 
-    cout << left << setw(7) << "No.";
+    cout << left << setw(8) << "No.";
     cout << left << setw(8) << "ID";
     cout << left << setw(40) << "Name";
     cout << left << fixed << setprecision(2) << setw(12) << "Price($)";
-    cout << left << setw(5) << "Qnty.";
+    cout << left << setw(6) << "Qnty.";
+    cout << left << fixed << setprecision(2) << setw(12) << "Value($)";
     cout << endl;
 
     for (int i = 0; i < productsCount; i++)
     {
-        cout << left << setw(3) << "[" << (i + 1) << "]. ";
+        cout << left << setw(4) << "[" << (i + 1) << "]. ";
         cout << left << setw(8) << products[i].id;
         cout << left << setw(40) << products[i].name;
         cout << left << fixed << setprecision(2) << setw(12) << products[i].price;
-        cout << left << setw(5) << products[i].quantity;
+        cout << left << setw(6) << products[i].quantity;
+        cout << left << fixed << setprecision(2) << setw(12) << (products[i].price * products[i].quantity);
         cout << endl;
     }
     cout << endl;
+
+    return 0;
+}
+
+int handleSearchById(Product products[], int productsCount)
+{
+    clearConsole();
+
+    int searchId;
+    cout << "Enter Product Details" << endl;
+
+    cout << left << setw(12) << "ID: ";
+    if (!getInt(searchId, 99999, 999999))
+    {
+        return -20;
+    }
+
+    int index = -1;
+    for (int i = 0; i < productsCount; i++)
+    {
+        if (products[i].id == searchId)
+        {
+            index = i;
+            break;
+        }
+    }
+
+    if (index == -1)
+    {
+        return -10;
+    }
+
+    cout << "Search Result: " << endl
+         << endl;
+
+    cout << left << setw(12) << "ID: ";
+    cout << products[index].id << endl;
+
+    cout << left << setw(12) << "Name: ";
+    cout << products[index].name << endl;
+
+    cout << left << setw(12) << "Price($): ";
+    cout << fixed << setprecision(2) << products[index].price << endl;
+
+    cout << left << setw(12) << "Qnty.: ";
+    cout << products[index].quantity << endl;
+
+    return 0;
+}
+
+int handleSearchByName(Product products[], int productsCount)
+{
+    clearConsole();
+
+    string searchName;
+    cout << "Enter Product Details" << endl;
+
+    cout << left << setw(12) << "Name: ";
+    getString(searchName);
+
+    if (searchName.size() <= 3 || searchName.size() > 32)
+    {
+        return -20;
+    }
+
+    int index = -1;
+    for (int i = 0; i < productsCount; i++)
+    {
+        if (toLowerString(products[i].name) == toLowerString(searchName))
+        {
+            index = i;
+            break;
+        }
+    }
+
+    if (index == -1)
+    {
+        return -10;
+    }
+
+    cout << "Search Result: " << endl
+         << endl;
+
+    cout << left << setw(12) << "ID: ";
+    cout << products[index].id << endl;
+
+    cout << left << setw(12) << "Name: ";
+    cout << products[index].name << endl;
+
+    cout << left << setw(12) << "Price($): ";
+    cout << fixed << setprecision(2) << products[index].price << endl;
+
+    cout << left << setw(12) << "Qnty.: ";
+    cout << products[index].quantity << endl;
 
     return 0;
 }
@@ -407,7 +552,7 @@ int deleteProduct(Product products[], int &productsCount, int searchId)
 
     productsCount = tempCounter;
 
-    for(int i = 0; i < productsCount; i++)
+    for (int i = 0; i < productsCount; i++)
     {
         products[i] = temp[i];
     }
@@ -430,7 +575,7 @@ int deleteProduct(Product products[], int &productsCount, string searchName)
 
     productsCount = tempCounter;
 
-    for(int i = 0; i < productsCount; i++)
+    for (int i = 0; i < productsCount; i++)
     {
         products[i] = temp[i];
     }
@@ -565,7 +710,7 @@ int loadProductsData(Product products[], int &productsCount)
             continue;
         }
 
-        char attrStr[line.size()];
+        char attrStr[100];
         int attrStrCounter = 0, attrCount = 0;
         for (int i = 0; i < line.size(); i++)
         {
@@ -646,7 +791,6 @@ void handleError(int code)
 
 void getString(string &s)
 {
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
     getline(cin, s);
 
     string cleanString = "";
@@ -664,6 +808,7 @@ bool getInt(int &input, int rangeStart, int rangeEnd)
 {
     if (cin >> input)
     {
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
         return (input >= rangeStart && input <= rangeEnd);
     }
     else
@@ -678,7 +823,7 @@ bool getDouble(double &input, int rangeStart, int rangeEnd)
 {
     if (cin >> input)
     {
-
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
         return (input >= rangeStart && input <= rangeEnd);
     }
     else
@@ -700,4 +845,15 @@ int getRandomInt(int min, int max)
 void clearConsole()
 {
     system("cls"); // Only works on windows
+}
+
+string toLowerString(string s)
+{
+    string lowered = s;
+    for (int i = 0; i < s.size(); i++)
+    {
+        lowered[i] = tolower(s[i]);
+    }
+
+    return lowered;
 }
