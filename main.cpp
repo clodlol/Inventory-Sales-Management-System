@@ -30,13 +30,8 @@ int handleSearchById(Product products[], int productsCount);
 int handleSearchByName(Product products[], int productsCount);
 
 int addProduct(Product products[], int &productsCount, Product newProduct);
-
-int updateProduct(Product products[], int productsCount, int searchId, string name, double price, int quantity);
 int updateProduct(Product products[], int productsCount, int searchId, double price, int quantity);
-int updateProduct(Product products[], int productsCount, string searchName, double price, int quantity);
-
 int deleteProduct(Product products[], int &productsCount, int searchId);
-int deleteProduct(Product products[], int &productsCount, string searchName);
 
 int saveProductsData(Product products[], int productsCount);
 int loadProductsData(Product products[], int &productsCount);
@@ -274,7 +269,6 @@ int handleUpdateProduct(Product products[], int productsCount)
 {
     Product oldProduct;
     int searchId;
-    string searchName;
     clearConsole();
 
     cout << "Enter Product Details" << endl;
@@ -290,6 +284,7 @@ int handleUpdateProduct(Product products[], int productsCount)
     {
         if (products[i].id == searchId)
         {
+            oldProduct.id = products[i].id;
             oldProduct.name = products[i].name;
             oldProduct.quantity = products[i].quantity;
             oldProduct.price = products[i].price;
@@ -303,20 +298,12 @@ int handleUpdateProduct(Product products[], int productsCount)
         return -10;
     }
 
-    string newProductName;
     int newProductQuantity;
     double newProductPrice;
 
     cout << endl
          << endl
          << "Enter Updated Details for Product " << searchId << endl;
-    cout << left << setw(12) << "Name: ";
-    getString(newProductName);
-
-    if (newProductName.size() < 3 || newProductName.size() > NAME_LIMIT)
-    {
-        return -20;
-    }
 
     cout << left << setw(12) << "Price($): ";
     if (!getDouble(newProductPrice, 0, INT_MAX))
@@ -330,7 +317,7 @@ int handleUpdateProduct(Product products[], int productsCount)
         return -20;
     }
 
-    int updateProductState = updateProduct(products, productsCount, searchId, newProductName, newProductPrice, newProductQuantity);
+    int updateProductState = updateProduct(products, productsCount, searchId, newProductPrice, newProductQuantity);
     if (updateProductState == 0)
     {
         saveProductsData(products, productsCount);
@@ -338,8 +325,11 @@ int handleUpdateProduct(Product products[], int productsCount)
         cout << endl
              << "The following product has been updated." << endl;
 
+        cout << left << setw(12) << "ID: ";
+        cout << oldProduct.id << endl;
+
         cout << left << setw(12) << "Name: ";
-        cout << oldProduct.name << " -> " << newProductName << endl;
+        cout << oldProduct.name << endl;
 
         cout << left << setw(12) << "Price($): ";
         cout << fixed << setprecision(2) << oldProduct.price << " -> " << newProductPrice << endl;
@@ -560,56 +550,6 @@ int deleteProduct(Product products[], int &productsCount, int searchId)
     return 0;
 }
 
-int deleteProduct(Product products[], int &productsCount, string searchName)
-{
-    Product temp[CACHE_SIZE];
-    int tempCounter = 0;
-    for (int i = 0; i < productsCount; i++)
-    {
-        if (products[i].name != searchName)
-        {
-            temp[tempCounter] = products[i];
-            tempCounter++;
-        }
-    }
-
-    productsCount = tempCounter;
-
-    for (int i = 0; i < productsCount; i++)
-    {
-        products[i] = temp[i];
-    }
-
-    return 0;
-}
-
-int updateProduct(Product products[], int productsCount, int searchId, string name, double price, int quantity)
-{
-    int index = -1, oldQty = 0;
-    double oldPrice = 0;
-    for (int i = 0; i < productsCount; i++)
-    {
-        if (products[i].id == searchId)
-        {
-            index = i;
-            oldPrice = products[i].price;
-            oldQty = products[i].quantity;
-            break;
-        }
-    }
-
-    if (index == -1)
-    {
-        return -10;
-    }
-
-    products[index].name = name;
-    products[index].price = (price < 0) ? oldPrice : price;
-    products[index].quantity = (quantity < 0) ? oldQty : quantity;
-
-    return 0;
-}
-
 int updateProduct(Product products[], int productsCount, int searchId, double price, int quantity)
 {
     int index = -1, oldQty = 0;
@@ -617,32 +557,6 @@ int updateProduct(Product products[], int productsCount, int searchId, double pr
     for (int i = 0; i < productsCount; i++)
     {
         if (products[i].id == searchId)
-        {
-            index = i;
-            oldPrice = products[i].price;
-            oldQty = products[i].quantity;
-            break;
-        }
-    }
-
-    if (index == -1)
-    {
-        return -10;
-    }
-
-    products[index].price = (price < 0) ? oldPrice : price;
-    products[index].quantity = (quantity < 0) ? oldQty : quantity;
-
-    return 0;
-}
-
-int updateProduct(Product products[], int productsCount, string searchName, double price, int quantity)
-{
-    int index = -1, oldQty = 0;
-    double oldPrice = 0;
-    for (int i = 0; i < productsCount; i++)
-    {
-        if (products[i].name == searchName)
         {
             index = i;
             oldPrice = products[i].price;
