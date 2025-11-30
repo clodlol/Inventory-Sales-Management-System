@@ -13,6 +13,8 @@ const int CACHE_SIZE = 100; // number of products/sales stored in arrays
 const int NAME_LIMIT = 32;
 const string productFilePath = "products.txt";
 
+const double DOUBLE_MAX = numeric_limits<double>::max();
+
 struct Product
 {
     string name;
@@ -39,7 +41,7 @@ int loadProductsData(Product products[], int &productsCount);
 void handleError(int code);
 void clearConsole();
 void getString(string &s);
-bool getDouble(double &input, int rangeStart, int rangeEnd);
+bool getDouble(double &input, double rangeStart, double rangeEnd);
 bool getInt(int &input, int rangeStart, int rangeEnd);
 
 int getRandomInt(int min, int max);
@@ -228,7 +230,7 @@ int handleAddProduct(Product products[], int productsCount)
     }
 
     cout << left << setw(12) << "Price($): ";
-    if (!getDouble(newProduct.price, 0, INT_MAX))
+    if (!getDouble(newProduct.price, 0.00, DOUBLE_MAX))
     {
         return -20;
     }
@@ -306,7 +308,7 @@ int handleUpdateProduct(Product products[], int productsCount)
          << "Enter Updated Details for Product " << searchId << endl;
 
     cout << left << setw(12) << "Price($): ";
-    if (!getDouble(newProductPrice, 0, INT_MAX))
+    if (!getDouble(newProductPrice, 0.00, DOUBLE_MAX))
     {
         return -20;
     }
@@ -733,7 +735,7 @@ bool getInt(int &input, int rangeStart, int rangeEnd)
     }
 }
 
-bool getDouble(double &input, int rangeStart, int rangeEnd)
+bool getDouble(double &input, double rangeStart, double rangeEnd)
 {
     if (cin >> input)
     {
