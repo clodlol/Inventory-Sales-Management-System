@@ -6,12 +6,14 @@
 #include <conio.h>
 #include <ctime>
 #include <iomanip>
+#include <string>
 
 using namespace std;
 
 const int CACHE_SIZE = 100; // number of products/sales stored in arrays
 const int NAME_LIMIT = 32;
 const string productFilePath = "products.txt";
+const string salesFilePath = "sales.txt";
 
 const double DOUBLE_MAX = numeric_limits<double>::max();
 
@@ -23,6 +25,16 @@ struct Product
     int quantity;
 };
 
+struct Sale
+{
+    string productName;
+    int productId;
+    double price;
+    int quantitySold;
+    int saleId;
+};
+
+// Product Management Functions
 int handleAddProduct(Product products[], int productsCount);
 int handleUpdateProduct(Product products[], int productsCount);
 int handleDeleteProduct(Product products[], int productsCount);
@@ -31,6 +43,15 @@ int handleViewProducts(Product products[], int productsCount);
 int handleSearchById(Product products[], int productsCount);
 int handleSearchByName(Product products[], int productsCount);
 
+int handleRecordSale(Product products[], int &productsCount, Sale sales[], int &salesCount);
+int handleViewSales(Sale sales[], int salesCount);
+int handleSearchSaleById(Sale sales[], int salesCount);
+
+int handleDisplayAllSales(Sale sales[], int salesCount);
+
+int handleTotalRevenue(Sale sales[], int salesCount);
+int handleTopSellingProducts(Sale sales[], int salesCount);
+
 int addProduct(Product products[], int &productsCount, Product newProduct);
 int updateProduct(Product products[], int productsCount, int searchId, double price, int quantity);
 int deleteProduct(Product products[], int &productsCount, int searchId);
@@ -38,6 +59,12 @@ int deleteProduct(Product products[], int &productsCount, int searchId);
 int saveProductsData(Product products[], int productsCount);
 int loadProductsData(Product products[], int &productsCount);
 
+int recordSale(Product products[], int &productsCount, Sale sales[], int &salesCount, int productId, int quantitySold);
+
+int saveSalesData(Sale sales[], int salesCount);
+int loadSalesData(Sale sales[], int &salesCount);
+
+// Utility Functions
 void handleError(int code);
 void clearConsole();
 void getString(string &s);
@@ -53,6 +80,9 @@ int main()
 
     Product products[CACHE_SIZE];
     int productsCount = 0;
+
+    Sale sales[CACHE_SIZE];
+    int salesCount = 0;
 
     while (true)
     {
@@ -199,11 +229,132 @@ int main()
         }
         else if (menuChoice == 3)
         {
-            // load sales management
+            while (true)
+            {
+                loadProductsData(products, productsCount);
+                loadSalesData(sales, salesCount);
+                clearConsole();
+                int salesMenuChoice = 0;
+
+                cout << "1. Record a Sale" << endl
+                     << "2. View All Sales" << endl
+                     << "3. Search Sale by ID" << endl
+                     << "4. Go Back" << endl
+                     << endl;
+
+                cout << "Enter your choice: ";
+                if (!getInt(salesMenuChoice, 1, 4))
+                    continue;
+
+                if (salesMenuChoice == 1)
+                {
+                    int recordSaleState = handleRecordSale(products, productsCount, sales, salesCount);
+                    if (recordSaleState != 0)
+                    {
+                        handleError(recordSaleState);
+                    }
+                    else
+                    {
+                        cout << "Press any key to go back...";
+                        getch();
+                    }
+                }
+                else if (salesMenuChoice == 2)
+                {
+                    int viewSalesState = handleViewSales(sales, salesCount);
+                    if (viewSalesState != 0)
+                    {
+                        handleError(viewSalesState);
+                    }
+                    else
+                    {
+                        cout << "Press any key to go back...";
+                        getch();
+                    }
+                }
+                else if (salesMenuChoice == 3)
+                {
+                    int searchSaleState = handleSearchSaleById(sales, salesCount);
+                    if (searchSaleState != 0)
+                    {
+                        handleError(searchSaleState);
+                    }
+                    else
+                    {
+                        cout << "Press any key to go back...";
+                        getch();
+                    }
+                }
+                else if (salesMenuChoice == 4)
+                {
+                    break;
+                }
+            }
         }
         else if (menuChoice == 4)
         {
-            // load reports & stats
+            while (true)
+            {
+                loadSalesData(sales, salesCount);
+                clearConsole();
+                
+                int reportsMenuChoice = 0;
+
+                cout << "Reports & Statistics" << endl
+                     << "1. Display All Sales" << endl
+                     << "2. Show Top-Selling Products" << endl
+                     << "3. Display Total Revenue Generated" << endl
+                     << "4. Go Back" << endl
+                     << endl;
+
+                cout << "Enter your choice: ";
+                if (!getInt(reportsMenuChoice, 1, 4))
+                    continue;
+
+                if (reportsMenuChoice == 1)
+                {
+                    int displaySalesState = handleDisplayAllSales(sales, salesCount);
+                    if (displaySalesState != 0)
+                    {
+                        handleError(displaySalesState);
+                    }
+                    else
+                    {
+                        cout << "Press any key to go back...";
+                        getch();
+                    }
+                }
+                else if (reportsMenuChoice == 2)
+                {
+                    int topSellingState = handleTopSellingProducts(sales, salesCount);
+                    if (topSellingState != 0)
+                    {
+                        handleError(topSellingState);
+                    }
+                    else
+                    {
+                        cout << "Press any key to go back...";
+                        getch();
+                    }
+                }
+                else if (reportsMenuChoice == 3)
+                {
+                    int revenueState = handleTotalRevenue(sales, salesCount);
+                    if (revenueState != 0)
+                    {
+                        handleError(revenueState);
+                    }
+                    else
+                    {
+                        cout << "Press any key to go back...";
+                        getch();
+                    }
+                }
+                else if (reportsMenuChoice == 4)
+                {
+                    break;
+                }
+            }
         }
         else if (menuChoice == 5)
         {
@@ -236,7 +387,7 @@ int handleAddProduct(Product products[], int productsCount)
     }
 
     cout << left << setw(12) << "Qnty.: ";
-    if (!getInt(newProduct.quantity, 0, INT_MAX))
+    if (!getInt(newProduct.quantity, 0, 9999999))
     {
         return -20;
     }
@@ -314,7 +465,7 @@ int handleUpdateProduct(Product products[], int productsCount)
     }
 
     cout << left << setw(12) << "Qnty.: ";
-    if (!getInt(newProductQuantity, 0, INT_MAX))
+    if (!getInt(newProductQuantity, 0, 9999999))
     {
         return -20;
     }
@@ -569,7 +720,7 @@ int updateProduct(Product products[], int productsCount, int searchId, double pr
 
     if (index == -1)
     {
-        return -10;
+        return -10; //Product not found
     }
 
     products[index].price = (price < 0) ? oldPrice : price;
@@ -593,7 +744,7 @@ int saveProductsData(Product products[], int productsCount)
     ofstream productFile(productFilePath, ios::out); // overwrites all data, prevents corruption
     if (!productFile.is_open())
     {
-        return -30;
+        return -30; //File handling error
     }
 
     productFile << "ID;Name;Price;Quantity;" << endl;
@@ -612,7 +763,7 @@ int loadProductsData(Product products[], int &productsCount)
     ifstream productFile(productFilePath, ios::in);
     if (!productFile.is_open())
     {
-        return -30;
+        return -30; //File handling error
     }
 
     bool isHeader = true;
@@ -626,14 +777,14 @@ int loadProductsData(Product products[], int &productsCount)
             continue;
         }
 
-        char attrStr[100];
+        char attrStr[1000];
         int attrStrCounter = 0, attrCount = 0;
         for (int i = 0; i < line.size(); i++)
         {
-            attrStr[attrStrCounter] = '\0';
 
             if (line[i] == ';')
             {
+                attrStr[attrStrCounter] = '\0';
                 if (attrCount == 0)
                 {
                     products[productCounter].id = atoi(attrStr);
@@ -671,18 +822,524 @@ int loadProductsData(Product products[], int &productsCount)
     return 0;
 }
 
+int handleRecordSale(Product products[], int &productsCount, Sale sales[], int &salesCount)
+{
+    int productId, quantitySold;
+    clearConsole();
+
+    cout << "Record a Sale" << endl
+         << endl;
+
+    cout << left << setw(20) << "Product ID: ";
+    if (!getInt(productId, 99999, 999999))
+    {
+        return -20;
+    }
+
+    int productIndex = -1;
+    for (int i = 0; i < productsCount; i++)
+    {
+        if (products[i].id == productId)
+        {
+            productIndex = i;
+            break;
+        }
+    }
+
+    if (productIndex == -1)
+    {
+        return -10; // Product not found
+    }
+
+    cout << endl
+         << "Product Found:" << endl;
+    cout << left << setw(20) << "Name: " << products[productIndex].name << endl;
+    cout << left << setw(20) << "Price($): " << fixed << setprecision(2) << products[productIndex].price << endl;
+    cout << left << setw(20) << "Available Stock: " << products[productIndex].quantity << endl;
+    cout << endl;
+
+    cout << left << setw(20) << "Quantity to Sell: ";
+    if (!getInt(quantitySold, 1, 9999999))
+    {
+        return -20; //Invalid Input
+    }
+
+    if (quantitySold > products[productIndex].quantity)
+    {
+        return -40; // Insufficient stock
+    }
+
+    int recordSaleState = recordSale(products, productsCount, sales, salesCount, productId, quantitySold);
+
+    if (recordSaleState == 0)
+    {
+        double totalBill = products[productIndex].price * quantitySold;
+
+        cout << endl
+             << "Sale Recorded Successfully!" << endl
+             << endl;
+        cout << left << setw(20) << "Sale ID: " << sales[salesCount - 1].saleId << endl;
+        cout << left << setw(20) << "Product: " << sales[salesCount - 1].productName << endl;
+        cout << left << setw(20) << "Quantity Sold: " << quantitySold << endl;
+        cout << left << setw(20) << "Unit Price($): " << fixed << setprecision(2) << sales[salesCount - 1].price << endl;
+        cout << left << setw(20) << "Total Bill($): " << fixed << setprecision(2) << totalBill << endl;
+        cout << left << setw(20) << "Remaining Stock: " << products[productIndex].quantity << endl;
+        cout << endl;
+    }
+
+    return recordSaleState;
+}
+
+int handleViewSales(Sale sales[], int salesCount)
+{
+    clearConsole();
+
+    if (salesCount <= 0)
+    {
+        return -10;
+    }
+
+    cout << "All Recorded Sales:" << endl
+         << endl;
+
+    cout << left << setw(8) << "No.";
+    cout << left << setw(10) << "Sale ID";
+    cout << left << setw(10) << "Prod. ID";
+    cout << left << setw(30) << "Product Name";
+    cout << left << setw(12) << "Price($)";
+    cout << left << setw(10) << "Qty Sold";
+    cout << left << setw(12) << "Total($)";
+    cout << endl;
+
+    double grandTotal = 0.0;
+
+    for (int i = 0; i < salesCount; i++)
+    {
+        double saleTotal = sales[i].price * sales[i].quantitySold;
+        grandTotal += saleTotal;
+
+        cout << left << setw(4) << "[" << (i + 1) << "]. ";
+        cout << left << setw(10) << sales[i].saleId;
+        cout << left << setw(10) << sales[i].productId;
+        cout << left << setw(30) << sales[i].productName;
+        cout << left << fixed << setprecision(2) << setw(12) << sales[i].price;
+        cout << left << setw(10) << sales[i].quantitySold;
+        cout << left << fixed << setprecision(2) << setw(12) << saleTotal;
+        cout << endl;
+    }
+
+    cout << endl;
+    cout << left << setw(70) << "Grand Total: ";
+    cout << "$" << fixed << setprecision(2) << grandTotal << endl;
+    cout << endl;
+
+    return 0;
+}
+
+int handleSearchSaleById(Sale sales[], int salesCount)
+{
+    clearConsole();
+
+    int searchSaleId;
+    cout << "Search Sale by ID" << endl
+         << endl;
+
+    cout << left << setw(12) << "Sale ID: ";
+    if (!getInt(searchSaleId, 99999, 999999))
+    {
+        return -20; //Invalid input
+    }
+
+    int index = -1;
+    for (int i = 0; i < salesCount; i++)
+    {
+        if (sales[i].saleId == searchSaleId)
+        {
+            index = i;
+            break;
+        }
+    }
+
+    if (index == -1)
+    {
+        return -10; //Specified product not found.
+    }
+
+    double totalBill = sales[index].price * sales[index].quantitySold;
+
+    cout << endl
+         << "Sale Found:" << endl
+         << endl;
+
+    cout << left << setw(20) << "Sale ID: " << sales[index].saleId << endl;
+    cout << left << setw(20) << "Product ID: " << sales[index].productId << endl;
+    cout << left << setw(20) << "Product Name: " << sales[index].productName << endl;
+    cout << left << setw(20) << "Price($): " << fixed << setprecision(2) << sales[index].price << endl;
+    cout << left << setw(20) << "Quantity Sold: " << sales[index].quantitySold << endl;
+    cout << left << setw(20) << "Total Bill($): " << fixed << setprecision(2) << totalBill << endl;
+    cout << endl;
+
+    return 0;
+}
+
+int recordSale(Product products[], int &productsCount, Sale sales[], int &salesCount, int productId, int quantitySold)
+{
+    int productIndex = -1;
+    for (int i = 0; i < productsCount; i++)
+    {
+        if (products[i].id == productId)
+        {
+            productIndex = i;
+            break;
+        }
+    }
+
+    if (productIndex == -1)
+    {
+        return -10; // Product not found
+    }
+
+    if (quantitySold > products[productIndex].quantity)
+    {
+        return -40; // Insufficient stock
+    }
+
+    Sale newSale;
+    newSale.saleId = getRandomInt(99999, 999999);
+    newSale.productId = productId;
+    newSale.productName = products[productIndex].name;
+    newSale.price = products[productIndex].price;
+    newSale.quantitySold = quantitySold;
+
+    sales[salesCount] = newSale;
+    salesCount++;
+
+    products[productIndex].quantity -= quantitySold;
+
+    saveProductsData(products, productsCount);
+    saveSalesData(sales, salesCount);
+
+    return 0;
+}
+
+int saveSalesData(Sale sales[], int salesCount)
+{
+    ofstream salesFile(salesFilePath, ios::out);
+    if (!salesFile.is_open())
+    {
+        return -30; // File handling error
+    }
+
+    salesFile << "SaleID;ProductID;ProductName;Price;QuantitySold;" << endl;
+    for (int i = 0; i < salesCount; i++)
+    {
+        salesFile << sales[i].saleId << ";"
+                  << sales[i].productId << ";"
+                  << sales[i].productName << ";"
+                  << sales[i].price << ";"
+                  << sales[i].quantitySold << ";" << endl;
+    }
+
+    salesFile.close();
+
+    return 0;
+}
+
+int loadSalesData(Sale sales[], int &salesCount)
+{
+    ifstream salesFile(salesFilePath, ios::in);
+    if (!salesFile.is_open())
+    {
+        return -30;
+    }
+
+    bool isHeader = true;
+    string line;
+    int saleCounter = 0;
+
+    while (getline(salesFile, line))
+    {
+        if (isHeader)
+        {
+            isHeader = false;
+            continue;
+        }
+
+        char attrStr[1000];
+        int attrStrCounter = 0, attrCount = 0;
+
+        for (int i = 0; i < line.size(); i++)
+        {
+            if (line[i] == ';')
+            {
+                attrStr[attrStrCounter] = '\0';
+                if (attrCount == 0)
+                {
+                    sales[saleCounter].saleId = atoi(attrStr);
+                }
+                else if (attrCount == 1)
+                {
+                    sales[saleCounter].productId = atoi(attrStr);
+                }
+                else if (attrCount == 2)
+                {
+                    sales[saleCounter].productName = attrStr;
+                }
+                else if (attrCount == 3)
+                {
+                    sales[saleCounter].price = atof(attrStr);
+                }
+                else if (attrCount == 4)
+                {
+                    sales[saleCounter].quantitySold = atoi(attrStr);
+                }
+
+                attrStrCounter = 0;
+                attrCount++;
+            }
+            else
+            {
+                attrStr[attrStrCounter] = line[i];
+                attrStrCounter++;
+            }
+        }
+
+        saleCounter++;
+    }
+
+    salesCount = saleCounter;
+    salesFile.close();
+
+    return 0;
+}
+
+int handleDisplayAllSales(Sale sales[], int salesCount)
+{
+    clearConsole();
+
+    if (salesCount <= 0)
+    {
+        return -10; //No sales found
+    }
+
+    cout << "SALES REPORT" << endl
+         << endl;
+
+    cout << left << setw(8) << "No.";
+    cout << left << setw(10) << "Sale ID";
+    cout << left << setw(10) << "Prod. ID";
+    cout << left << setw(30) << "Product Name";
+    cout << left << setw(12) << "Price($)";
+    cout << left << setw(10) << "Qty Sold";
+    cout << left << setw(12) << "Total($)";
+    cout << endl;
+    cout << endl;
+
+    double grandTotal = 0.0;
+    int totalQuantitySold = 0;
+
+    for (int i = 0; i < salesCount; i++)
+    {
+        double saleTotal = sales[i].price * sales[i].quantitySold;
+        grandTotal += saleTotal;
+        totalQuantitySold += sales[i].quantitySold;
+
+        cout << left << setw(4) << "[" << (i + 1) << "]. ";
+        cout << left << setw(10) << sales[i].saleId;
+        cout << left << setw(10) << sales[i].productId;
+        cout << left << setw(30) << sales[i].productName;
+        cout << left << fixed << setprecision(2) << setw(12) << sales[i].price;
+        cout << left << setw(10) << sales[i].quantitySold;
+        cout << left << fixed << setprecision(2) << setw(12) << saleTotal;
+        cout << endl;
+    }
+
+    cout << endl;
+    cout << left << setw(60) << "Total Sales Count: " << salesCount << endl;
+    cout << left << setw(60) << "Total Items Sold: " << totalQuantitySold << endl;
+    cout << left << setw(60) << "Grand Total Revenue: ";
+    cout << "$" << fixed << setprecision(2) << grandTotal << endl;
+    cout << endl;
+
+    return 0;
+}
+
+int handleTopSellingProducts(Sale sales[], int salesCount)
+{
+    clearConsole();
+
+    if (salesCount <= 0)
+    {
+        return -10; //Not found
+    }
+
+    struct ProductSummary
+    {
+        string productName;
+        int productId;
+        int totalQuantitySold;
+        double totalRevenue;
+    };
+
+    ProductSummary summary[CACHE_SIZE];
+    int summaryCount = 0;
+
+    for (int i = 0; i < salesCount; i++)
+    {
+        bool found = false;
+        for (int j = 0; j < summaryCount; j++)
+        {
+            if (summary[j].productId == sales[i].productId)
+            {
+                summary[j].totalQuantitySold += sales[i].quantitySold;
+                summary[j].totalRevenue += (sales[i].price * sales[i].quantitySold);
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            summary[summaryCount].productId = sales[i].productId;
+            summary[summaryCount].productName = sales[i].productName;
+            summary[summaryCount].totalQuantitySold = sales[i].quantitySold;
+            summary[summaryCount].totalRevenue = sales[i].price * sales[i].quantitySold;
+            summaryCount++;
+        }
+    }
+
+    for (int i = 0; i < summaryCount - 1; i++)
+    {
+        for (int j = 0; j < summaryCount - i - 1; j++)
+        {
+            if (summary[j].totalQuantitySold < summary[j + 1].totalQuantitySold)
+            {
+                ProductSummary temp = summary[j];
+                summary[j] = summary[j + 1];
+                summary[j + 1] = temp;
+            }
+        }
+    }
+
+    cout << "TOP-SELLING PRODUCTS" << endl
+         << endl;
+
+    cout << left << setw(6) << "Rank";
+    cout << left << setw(10) << "Prod. ID";
+    cout << left << setw(35) << "Product Name";
+    cout << left << setw(15) << "Qty Sold";
+    cout << left << setw(15) << "Revenue($)";
+    cout << endl;
+    cout << endl;
+
+    for (int i = 0; i < summaryCount; i++)
+    {
+        cout << left << setw(6) << (i + 1);
+        cout << left << setw(10) << summary[i].productId;
+        cout << left << setw(35) << summary[i].productName;
+        cout << left << setw(15) << summary[i].totalQuantitySold;
+        cout << left << fixed << setprecision(2) << setw(15) << summary[i].totalRevenue;
+        cout << endl;
+    }
+
+    cout << endl;
+
+    if (summaryCount > 0)
+    {
+        cout << "TOP SELLER: " << summary[0].productName 
+             << " (Sold: " << summary[0].totalQuantitySold << " units)" << endl;
+    }
+
+    cout << endl;
+
+    return 0;
+}
+
+int handleTotalRevenue(Sale sales[], int salesCount)
+{
+    clearConsole();
+
+    if (salesCount <= 0)
+    {
+        return -10; //Not found
+    }
+
+    cout << "REVENUE REPORT" << endl
+         << endl;
+
+    double totalRevenue = 0.0;
+    int totalItemsSold = 0;
+    int totalTransactions = salesCount;
+
+    for (int i = 0; i < salesCount; i++)
+    {
+        totalRevenue += (sales[i].price * sales[i].quantitySold);
+        totalItemsSold += sales[i].quantitySold;
+    }
+
+    double averageTransactionValue = totalRevenue / totalTransactions;
+    double averageItemPrice = totalRevenue / totalItemsSold;
+
+    cout << left << setw(35) << "Total Transactions: " << totalTransactions << endl;
+    cout << left << setw(35) << "Total Items Sold: " << totalItemsSold << endl;
+    cout << left << setw(35) << "Total Revenue Generated: " 
+         << "$" << fixed << setprecision(2) << totalRevenue << endl;
+    cout << endl;
+    cout << left << setw(35) << "Average Transaction Value: " 
+         << "$" << fixed << setprecision(2) << averageTransactionValue << endl;
+    cout << left << setw(35) << "Average Item Price: " 
+         << "$" << fixed << setprecision(2) << averageItemPrice << endl;
+    cout << endl;
+
+    double highestRevenue = 0.0;
+    double lowestRevenue = DOUBLE_MAX;
+    int highestIndex = 0;
+    int lowestIndex = 0;
+
+    for (int i = 0; i < salesCount; i++)
+    {
+        double saleRevenue = sales[i].price * sales[i].quantitySold;
+        if (saleRevenue > highestRevenue)
+        {
+            highestRevenue = saleRevenue;
+            highestIndex = i;
+        }
+        if (saleRevenue < lowestRevenue)
+        {
+            lowestRevenue = saleRevenue;
+            lowestIndex = i;
+        }
+    }
+
+    cout << "TRANSACTION HIGHLIGHTS" << endl
+         << endl;
+    cout << "Highest Revenue Transaction:" << endl;
+    cout << "Sale ID: " << sales[highestIndex].saleId << endl;
+    cout << "Product: " << sales[highestIndex].productName << endl;
+    cout << "Revenue($): " << fixed << setprecision(2) << highestRevenue << endl;
+    cout << endl;
+
+    cout << "Lowest Revenue Transaction:" << endl;
+    cout << "Sale ID: " << sales[lowestIndex].saleId << endl;
+    cout << "Product: " << sales[lowestIndex].productName << endl;
+    cout << "Revenue($): " << fixed << setprecision(2) << lowestRevenue << endl;
+    cout << endl;
+
+    return 0;
+}
+
 void handleError(int code)
 {
     if (code == -10)
     {
         clearConsole();
-        cout << "The product with the specified ID does not exist." << endl;
+        cout << "Specified product(s) do not exist." << endl;
         getch();
     }
     else if (code == -20)
     {
         clearConsole();
-        cout << "Invalid data given. Did you make sure prices and quantities are positive?" << endl;
+        cout << "Invalid input given." << endl;
         getch();
     }
     else if (code == -21)
@@ -694,13 +1351,19 @@ void handleError(int code)
     else if (code == -30)
     {
         clearConsole();
-        cout << "The data file throws an error upon operating." << endl;
+        cout << "Error occurred while reading/writing data files." << endl;
+        getch();
+    }
+    else if (code == -40)
+    {
+        clearConsole();
+        cout << "Insufficient stock! Cannot sell more than available quantity." << endl;
         getch();
     }
     else if (code == -50)
     {
         clearConsole();
-        cout << "Data written to unallocated memory. Did an integer overflow?" << endl;
+        cout << "Data written to unallocated memory." << endl;
         getch();
     }
 }
@@ -760,7 +1423,7 @@ int getRandomInt(int min, int max)
 
 void clearConsole()
 {
-    system("cls"); // Only works on windows
+    system("cls");
 }
 
 string toLowerString(string s)
